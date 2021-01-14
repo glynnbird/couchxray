@@ -130,9 +130,29 @@ Couchxray is usually quick to run because it can proceed with only a handful of 
 - the MapReduce keys are not greater than 8000 bytes
 - the MapReduce values are not greater than 64000 bytes
 
-These are pertinent if a user is wishing to move to CouchDB 4 (or Cloudant on Transaction Engine) which imposes some size limits on documeny keys and index key/values.
+These are pertinent if a user is wishing to move to CouchDB 4 (or Cloudant on Transaction Engine) which imposes some size limits on document keys and index key/values.
 
 Running in full scan mode will produce a `scan` object in the JSON output and will influence the `compatibility.couchDB4` object.
+
+```js
+  "compatibility": {
+    ...
+    "couchDB4": {
+      "ok": false,
+      "features": ["large document ids", "large index keys", "large index values"]
+    }
+  },
+  "scan": {
+    "docIdTooBig": true,
+    "errors": {
+      "_design/count/byCity": {
+        "indexKeyTooBig": true,
+        "indexValueTooBig": true
+      }
+    }
+  }
+}
+```
 
 > Don't use `--scan` unless you are interested in a thorough examination of whether a database is CouchDB 4 compatible.
 

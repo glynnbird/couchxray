@@ -248,36 +248,40 @@ const fullScan = async (dbName, designDocs) => {
 
         // ignore design docs
         if (!doc._id.startsWith('_design/')) {
-          // for each of this databases MapReduce functions
+          // for each of this database's MapReduce functions
           for (const j in mapFunctions) {
             // generate a harness to run the map function safely
             const mapFunction = mapFunctions[j]
             const evalStr = `const kv = []; const emit = (k,v) => { kv.push({ k:k, v:v })}; const d = ${JSON.stringify(doc)}; const map = ${mapFunction}; map(d); return kv;`
 
             // get a list of the key/values emitted from the Map function
-            // eslint-disable-next-line
-            const emittedKV = Function(evalStr)()
+            try {
+              // eslint-disable-next-line
+              const emittedKV = Function(evalStr)()
 
-            // identify those which exceed safe Transaction Engine key value size limits
-            let indexKeyTooBig = false
-            let indexValueTooBig = false
-            for (const k in emittedKV) {
-              const kv = emittedKV[k]
-              if (JSON.stringify(kv.k).length > 1000) {
-                indexKeyTooBig = true
-              }
-              if (JSON.stringify(kv.v).length > 8000) {
-                indexValueTooBig = true
-              }
-            }
+              // identify those which exceed safe Transaction Engine key value size limits
+              let indexKeyTooBig = false
+              let indexValueTooBig = false
+              for (const k in emittedKV) {
+                const kv = emittedKV[k]
+                if (JSON.stringify(kv.k).length > 1000) {
+                  indexKeyTooBig = true
+                }
+                if (JSON.stringify(kv.v).length > 8000) {
+                  indexValueTooBig = true
+                }
 
-            // if they are out of spec, record the ddoc/index reference for the report
-            if (indexKeyTooBig || indexValueTooBig) {
-              if (!retval.errors[j]) {
-                retval.errors[j] = { indexKeyTooBig: false, indexValueTooBig: false }
+                // if they are out of spec, record the ddoc/index reference for the report
+                if (indexKeyTooBig || indexValueTooBig) {
+                  if (!retval.errors[j]) {
+                    retval.errors[j] = { indexKeyTooBig: false, indexValueTooBig: false }
+                  }
+                  retval.errors[j].indexKeyTooBig = retval.errors[j].indexKeyTooBig || indexKeyTooBig
+                  retval.errors[j].indexValueTooBig = retval.errors[j].indexValueTooBig || indexValueTooBig
+                }
               }
-              retval.errors[j].indexKeyTooBig = retval.errors[j].indexKeyTooBig || indexKeyTooBig
-              retval.errors[j].indexValueTooBig = retval.errors[j].indexValueTooBig || indexValueTooBig
+            } catch (e) {
+              console.error(`${j} - Map function execution error `, e)
             }
           }
         }
